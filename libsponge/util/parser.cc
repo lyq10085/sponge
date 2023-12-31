@@ -1,6 +1,11 @@
 #include "parser.hh"
 
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wshift-count-overflow"
+
 using namespace std;
+
 
 //! \param[in] r is the ParseResult to show
 //! \returns a string representation of the ParseResult
