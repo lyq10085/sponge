@@ -31,9 +31,13 @@ T NetParser::_parse_int() {
         return 0;
     }
 
+
     T ret = 0;
     for (size_t i = 0; i < len; i++) {
-        ret <<= 8;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wshift-count-overflow"    
+        ret <<= 8; //NOLINT
+        #pragma clang diagnostic pop
         ret += uint8_t(_buffer.at(i));
     }
 
