@@ -1,4 +1,5 @@
 #include "byte_stream.hh"
+
 #include <stdexcept>
 #include <string_view>
 
@@ -14,8 +15,8 @@ void DUMMY_CODE(Targs &&... /* unused */) {}
 
 using namespace std;
 
-ByteStream::ByteStream(const size_t capacity) { 
-    // DUMMY_CODE(capacity); 
+ByteStream::ByteStream(const size_t capacity) {
+    // DUMMY_CODE(capacity);
     cap_ = capacity;
 }
 
@@ -23,11 +24,11 @@ size_t ByteStream::write(const string &data) {
     // DUMMY_CODE(data);
     size_t written{0};
     size_t remain{remaining_capacity()};
-    if(remain >= data.size()) {
+    if (remain >= data.size()) {
         written = data.size();
         std::string bytes(data);
         storage_.append(Buffer(std::move(bytes)));
-    }else if(remain > 0) {
+    } else if (remain > 0) {
         written = remain;
         std::string bytes(data.data(), remain);
         storage_.append(Buffer(std::move(bytes)));
@@ -39,7 +40,7 @@ size_t ByteStream::write(const string &data) {
 //! \param[in] len bytes will be copied from the output side of the buffer
 string ByteStream::peek_output(const size_t len) const {
     // DUMMY_CODE(len);
-    if(buffer_size() < len) {
+    if (buffer_size() < len) {
         throw std::runtime_error("[lyq] buffer size less than what");
         return {};
     }
@@ -49,9 +50,9 @@ string ByteStream::peek_output(const size_t len) const {
 }
 
 //! \param[in] len bytes will be removed from the output side of the buffer
-void ByteStream::pop_output(const size_t len) { 
-    // DUMMY_CODE(len); 
-    if(buffer_size() < len) {
+void ByteStream::pop_output(const size_t len) {
+    // DUMMY_CODE(len);
+    if (buffer_size() < len) {
         throw std::runtime_error("[lyq] buffer size less than what");
     }
     storage_.remove_prefix(len);
@@ -77,12 +78,10 @@ size_t ByteStream::buffer_size() const { return storage_.size(); }
 bool ByteStream::buffer_empty() const { return buffer_size() == 0; }
 
 // eof and no bytes in buffer
-bool ByteStream::eof() const { return buffer_empty() &&  eof_; }
+bool ByteStream::eof() const { return buffer_empty() && eof_; }
 
 size_t ByteStream::bytes_written() const { return bytes_written_cnt_; }
 
 size_t ByteStream::bytes_read() const { return bytes_read_cnt_; }
 
-size_t ByteStream::remaining_capacity() const { 
-    return cap_ - buffer_size();
-}
+size_t ByteStream::remaining_capacity() const { return cap_ - buffer_size(); }

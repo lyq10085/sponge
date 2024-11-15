@@ -12,6 +12,8 @@ void Buffer::remove_prefix(const size_t n) {
     }
 }
 
+void Buffer::remove_suffix(const size_t n) { (void)n; }
+
 void BufferList::append(const BufferList &other) {
     for (const auto &buf : other._buffers) {
         _buffers.push_back(buf);
@@ -40,17 +42,17 @@ string BufferList::concatenate() const {
     return ret;
 }
 
-
 string BufferList::concatenate(size_t len) const {
     std::string ret;
     ret.reserve(len);
     size_t remain = len;
     for (const auto &buf : _buffers) {
-        if(remain == 0) break;
-        else if(remain >= buf.size()){
+        if (remain == 0)
+            break;
+        else if (remain >= buf.size()) {
             ret.append(buf);
             remain -= buf.size();
-        }else{ 
+        } else {
             ret.append({std::string(buf).data(), remain});
             remain = 0;
         }

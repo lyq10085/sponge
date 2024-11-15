@@ -48,6 +48,8 @@ class Buffer {
     //! \brief Discard the first `n` bytes of the string (does not require a copy or move)
     //! \note Doesn't free any memory until the whole string has been discarded in all copies of the Buffer.
     void remove_prefix(const size_t n);
+
+    void remove_suffix(const size_t n);
 };
 
 //! \brief A reference-counted discontiguous string that can discard bytes from the front
@@ -94,6 +96,7 @@ class BufferList {
     //! \brief Make a copy to a new std::string
     std::string concatenate() const;
 
+    //! \brief make a copy of prefix len bytes, caller make sure len < reminging bytes
     std::string concatenate(size_t len) const;
 };
 
