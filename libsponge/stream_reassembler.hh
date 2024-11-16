@@ -24,7 +24,7 @@ class UncontinuousByteRanges {
   public:
     UncontinuousByteRanges(size_t capacity) : _cap(capacity){};
 
-    void push_range(std::string data, uint64_t index);
+    void push_range(std::string&& data, uint64_t index);
 
     size_t size() const;
     std::optional<Buffer> read(uint64_t start_index, const size_t n);
@@ -76,17 +76,5 @@ class StreamReassembler {
     bool empty() const;
 };
 
-class IndexPrefixString {
-  private:
-    std::string _str;
-
-  public:
-    IndexPrefixString(uint64_t idx, std::string &&str) : _str(std::to_string(idx) + str){};
-    uint64_t index() const { return std::stoull(_str.substr(0, 8), nullptr, 10); }
-
-    size_t size() const { return _str.size() - sizeof(uint64_t); }
-
-    ~IndexPrefixString();
-};
 
 #endif  // SPONGE_LIBSPONGE_STREAM_REASSEMBLER_HH

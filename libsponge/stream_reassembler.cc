@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <iterator>
 #include <optional>
+#include <string>
 #include <string_view>
 #include <unistd.h>
 #include <utility>
@@ -35,13 +36,35 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
         return;
     if (eof)
         _eof = eof;
-    _unassembled_bytes.push_range(data, index);
-    while (auto buf = _unassembled_bytes.read(_output.bytes_written(), 0)) {
+    
+    size_t remaining = _output.remaining_capacity();
+    // fast path
+    if(_output.bytes_written() == index) {
+        if(remaining >= data.size()) {
+            _output.write(data);
+        } else {
+            _output.write(data.substr(0, remaining));
+            _unassembled_bytes.push_range(data.substr(remaining, data.size() - remaining), _output.bytes_written());
+        }
+    } else if(_output.bytes_written() > index && _output.bytes_written() < index + data.size()) {
+        if(remaining >= data.size() - _output.bytes_written() + index) {
+            _output.write(data.substr(_output.bytes_written() - index, data.size() - _output.bytes_written() + index));
+        } else {
+            _output.write(data.substr(_output.bytes_written() - index, remaining));
+            _unassembled_bytes.push_range(data.substr(_output.bytes_written() - index + remaining, data.size() - _output.bytes_written() + index - remaining), _output.bytes_written());
+        }
+    } else if(_output.bytes_written() >= index + data.size()) {
+        (void)0;
+    } else {
+        std::string dup = data;
+        _unassembled_bytes.push_range(std::move(dup), index);
+    }
+    remaining = _output.remaining_capacity();
+    while (remaining) {
+        std::optional<Buffer> buf = _unassembled_bytes.read(_output.bytes_written(), remaining);
         if (buf.has_value()) {
-            size_t remaining = _output.remaining_capacity();
-            (void)remaining;
-            // todo(_unassembled_bytes should support read no more than xxx byte method)
             size_t written = _output.write(buf->copy());
+            remaining = _output.remaining_capacity();
             (void)written;
         } else {
             break;
@@ -57,7 +80,7 @@ size_t StreamReassembler::unassembled_bytes() const { return _unassembled_bytes.
 
 bool StreamReassembler::empty() const { return unassembled_bytes() == 0; }
 
-void UncontinuousByteRanges::push_range(std::string data, uint64_t index) {
+void UncontinuousByteRanges::push_range(std::string&& data, uint64_t index) {
     size_t remaining = _cap - _size;
     if (remaining <= 0)
         return;
@@ -77,9 +100,7 @@ void UncontinuousByteRanges::push_range(std::string data, uint64_t index) {
 size_t UncontinuousByteRanges::size() const { return _size; }
 
 std::optional<Buffer> UncontinuousByteRanges::read(uint64_t start_index, const size_t n) {
-    // read string index greater or equal than start_index
-    // update _size
-    (void)n;
+    // read no more than `n`(>0) bytes whose index are greater or equal than start_index
     if (_ranges.empty()) {
         return std::nullopt;
     }
@@ -93,10 +114,17 @@ std::optional<Buffer> UncontinuousByteRanges::read(uint64_t start_index, const s
             _size -= it->second.size();
             it = _ranges.erase(it);
         } else {
+            it->second.remove_prefix(start_index - l);
+            _size -= start_index - l;
             Buffer buf = it->second;
-            _size -= it->second.size();
-            buf.remove_prefix(start_index - l);
-            it = _ranges.erase(it);
+            if(buf.size() <= n) {
+                _size -= buf.size();
+                it = _ranges.erase(it);
+            } else {
+                _size -= n;
+                buf.set_prefix(n);
+                it->second.remove_prefix(n);
+            }
             return buf;
         }
     }

@@ -12,7 +12,6 @@ void Buffer::remove_prefix(const size_t n) {
     }
 }
 
-void Buffer::remove_suffix(const size_t n) { (void)n; }
 
 void BufferList::append(const BufferList &other) {
     for (const auto &buf : other._buffers) {

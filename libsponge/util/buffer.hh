@@ -10,6 +10,7 @@
 #include <string>
 #include <string_view>
 #include <sys/uio.h>
+#include <type_traits>
 #include <vector>
 
 //! \brief A reference-counted read-only string that can discard bytes from the front
@@ -17,6 +18,8 @@ class Buffer {
   private:
     std::shared_ptr<std::string> _storage{};
     size_t _starting_offset{};
+
+    size_t _prefix_length{};
 
   public:
     Buffer() = default;
@@ -30,7 +33,14 @@ class Buffer {
         if (not _storage) {
             return {};
         }
-        return {_storage->data() + _starting_offset, _storage->size() - _starting_offset};
+        if(!_prefix_length) {
+          return {_storage->data() + _starting_offset, _storage->size() - _starting_offset};
+        }else{
+          if(_prefix_length > _storage->size() - _starting_offset) {
+            throw std::logic_error("unexpected prefix length");
+          }
+          return {_storage->data() + _starting_offset, _prefix_length};
+        }
     }
 
     operator std::string_view() const { return str(); }
@@ -49,7 +59,10 @@ class Buffer {
     //! \note Doesn't free any memory until the whole string has been discarded in all copies of the Buffer.
     void remove_prefix(const size_t n);
 
-    void remove_suffix(const size_t n);
+    void set_prefix(const size_t n) {
+      _prefix_length = n;
+    }
+
 };
 
 //! \brief A reference-counted discontiguous string that can discard bytes from the front
