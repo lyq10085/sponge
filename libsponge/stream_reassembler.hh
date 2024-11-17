@@ -18,7 +18,7 @@
 class UncontinuousByteRanges {
   private:
     std::list<std::pair<uint64_t, Buffer>> _ranges;
-    size_t _size{0};
+    [[maybe_unused]] size_t _size{0};
     size_t _cap{0};
 
   public:

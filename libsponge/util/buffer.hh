@@ -18,10 +18,7 @@ class Buffer {
   private:
     std::shared_ptr<std::string> _storage{};
     size_t _starting_offset{};
-
-    size_t _prefix_length{};
-
-    size_t _ending_offset{};
+    size_t _ending_offset;
 
   public:
     Buffer() = default;
@@ -35,14 +32,7 @@ class Buffer {
         if (not _storage) {
             return {};
         }
-        if(!_prefix_length) {
-          return {_storage->data() + _starting_offset, _storage->size() - _starting_offset};
-        }else{
-          if(_prefix_length > _storage->size() - _starting_offset) {
-            throw std::logic_error("unexpected prefix length");
-          }
-          return {_storage->data() + _starting_offset, _prefix_length};
-        }
+        return {_storage->data() + _starting_offset, _ending_offset - _starting_offset};
     }
 
     operator std::string_view() const { return str(); }
@@ -62,7 +52,10 @@ class Buffer {
     void remove_prefix(const size_t n);
 
     void set_prefix(const size_t n) {
-      _prefix_length = n;
+      if (n > str().size()) {
+        throw std::out_of_range("Buffer::remove_suffix");
+      }
+      _ending_offset = _starting_offset + n;
     }
 
     void remove_suffix(const size_t n) {
@@ -70,7 +63,7 @@ class Buffer {
         throw std::out_of_range("Buffer::remove_suffix");
       }
       _ending_offset -= n;
-      if (_storage and _starting_offset == _ending_offset ) {
+      if (_storage && _starting_offset == _ending_offset ) {
           _storage.reset();
       }
     }

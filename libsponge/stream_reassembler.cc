@@ -112,31 +112,83 @@ size_t StreamReassembler::unassembled_bytes() const { return _unassembled_bytes.
 bool StreamReassembler::empty() const { return unassembled_bytes() == 0; }
 
 void UncontinuousByteRanges::push_range(std::string&& data, uint64_t index) {
-    size_t remaining = _cap - _size;
+    size_t remaining = _cap - size();
     if (remaining <= 0)
         return;
     if (remaining < data.size()) {
         data = data.substr(0, remaining);
     }
-    _size += data.size();
+
+    Buffer buf(std::move(data));
+
+    // _size += data.size();
     for (auto it = _ranges.begin(); it != _ranges.end(); it++) {
         if (it->first > index) {
             // deal with overlap, then calculate _size 
+            // std::prev(it) --<data>-- it
+            // 1. remove prefix of it 
+            do {
+                uint64_t l = it->first;
+                uint64_t r = l + it->second.size();
+                uint64_t x = index + data.size();
+                if(x >= r) {
+                    it = _ranges.erase(it);
+                }else if(x <= l){
+                    break;
+                }else {
+                    it->second.remove_prefix(x - l);
+                    break;
+                }
+            }while(it != _ranges.end());
 
-            _ranges.insert(it, std::make_pair(index, Buffer(std::move(data))));
+            // 2. remove prefix of data
+            // check if prev node exists 
+            if(it != _ranges.begin()) {
+                auto pre = std::prev(it);
+                uint64_t l = index;
+                uint64_t r = l + data.size();
+                uint64_t x = pre->first + pre->second.size();
+                if(x >= r) {
+                    return;
+                }else if(x <= l){
+                    (void)0;
+                }else {
+                    buf.remove_prefix(x-l);
+                }
+            }
+            
+            _ranges.insert(it, std::make_pair(index, std::move(buf)));
             return;
         }
     }
-    _ranges.push_back(std::make_pair(index, Buffer(std::move(data))));
+
     // deal with overlap, then calculate _size
-
-
-    // todo if overlap is handled here, read method can be refined to return disjoint BufferList
+    if(_ranges.size() > 1) {
+        uint64_t l = _ranges.back().first;
+        uint64_t r = l + _ranges.back().second.size();
+        uint64_t x = index + data.size();
+        // must be index >= l, x >= l
+        if(x <= r) {
+            return; 
+        }else if(index < r){
+            buf.remove_prefix(r - index);
+        }else {
+            (void)0;
+        }
+    }
+    _ranges.push_back(std::make_pair(index, std::move(buf)));
+    // todo if overlap is handled here, read method can be refined to return disjoint Buffers as one BufferList
 
 }
 
 // todo(size should be the actual size after compact)
-size_t UncontinuousByteRanges::size() const { return _size; }
+size_t UncontinuousByteRanges::size() const { 
+    size_t sz{};
+    for(auto it = _ranges.begin(); it != _ranges.end(); it++) {
+        sz += it->second.size();
+    }
+    return sz; 
+}
 
 std::optional<Buffer> UncontinuousByteRanges::read(uint64_t start_index, const size_t n) {
     // read no more than `n`(>0) bytes whose index are greater or equal than start_index
@@ -150,17 +202,17 @@ std::optional<Buffer> UncontinuousByteRanges::read(uint64_t start_index, const s
         if (l > start_index)
             break;
         if (r < start_index) {
-            _size -= it->second.size();
+            // _size -= it->second.size();
             it = _ranges.erase(it);
         } else {
             it->second.remove_prefix(start_index - l);
-            _size -= start_index - l;
+            // _size -= start_index - l;
             Buffer buf = it->second;
             if(buf.size() <= n) {
-                _size -= buf.size();
+                // _size -= buf.size();
                 it = _ranges.erase(it);
             } else {
-                _size -= n;
+                // _size -= n;
                 buf.set_prefix(n);
                 it->second.remove_prefix(n);
             }

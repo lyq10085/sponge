@@ -7,7 +7,7 @@ void Buffer::remove_prefix(const size_t n) {
         throw out_of_range("Buffer::remove_prefix");
     }
     _starting_offset += n;
-    if (_storage and _starting_offset == _storage->size()) {
+    if (_storage && _starting_offset == _storage->size()) {
         _storage.reset();
     }
 }
