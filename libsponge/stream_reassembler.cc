@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <iterator>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <unistd.h>
@@ -30,34 +31,63 @@ StreamReassembler::StreamReassembler(const size_t capacity)
 //! possibly out-of-order, from the logical stream, and assembles any newly
 //! contiguous substrings and writes them into the output stream in order.
 void StreamReassembler::push_substring(const string &data, const size_t index, const bool eof) {
-    // DUMMY_CODE(data, index, eof);
-    // todo(should try to write to _output first if possible)
-    if (_eof)
+
+    if(data.empty()) {
+        if(_eof){
+            if(empty()) _output.end_input();
+        }else if(eof) {
+            _eof = eof;
+            if(empty()) _output.end_input();
+        }
         return;
-    if (eof)
-        _eof = eof;
-    
+    }
+
+    std::string_view dup(data);
     size_t remaining = _output.remaining_capacity();
-    // fast path
-    if(_output.bytes_written() == index) {
-        if(remaining >= data.size()) {
+
+    // eof condition, eof at some 'index'
+    if (_eof) {
+        if(_unassembled_bytes.empty()){ // eof at _output.bytes_written()
+            return;
+        }else if(index >= _unassembled_bytes.end()){ // below all are eof at _unassembled_bytes.end()
+            return;
+        }else if( index + data.size() <= _unassembled_bytes.end()) {
+            // fast path 
+            if(_output.bytes_written() == index && remaining >= data.size()) {
+                _output.write(data);
+            }
+        }else {
+            dup = dup.substr(0, _unassembled_bytes.end() - index);
+        }
+    } else if (eof) {
+        _eof = eof;
+        // fast path 
+        if(_output.bytes_written() == index && remaining >= data.size()) {
             _output.write(data);
+        }
+    }
+
+    remaining = _output.remaining_capacity();
+    
+    // capacity condition
+    if(_output.bytes_written() == index) {
+        if(remaining >= dup.size()) {
+            _output.write(std::string(dup));  // 只有这一种情况 当前函数不需要拷贝原始data 
         } else {
-            _output.write(data.substr(0, remaining));
-            _unassembled_bytes.push_range(data.substr(remaining, data.size() - remaining), _output.bytes_written());
+            _output.write(std::string(dup.substr(0, remaining)));
+            _unassembled_bytes.push_range(std::string(dup.substr(remaining, data.size() - remaining)), _output.bytes_written());
         }
     } else if(_output.bytes_written() > index && _output.bytes_written() < index + data.size()) {
         if(remaining >= data.size() - _output.bytes_written() + index) {
-            _output.write(data.substr(_output.bytes_written() - index, data.size() - _output.bytes_written() + index));
+            _output.write(std::string(dup.substr(_output.bytes_written() - index, data.size() - _output.bytes_written() + index)));
         } else {
-            _output.write(data.substr(_output.bytes_written() - index, remaining));
-            _unassembled_bytes.push_range(data.substr(_output.bytes_written() - index + remaining, data.size() - _output.bytes_written() + index - remaining), _output.bytes_written());
+            _output.write(std::string(dup.substr(_output.bytes_written() - index, remaining)));
+            _unassembled_bytes.push_range(std::string(dup.substr(_output.bytes_written() - index + remaining, data.size() - _output.bytes_written() + index - remaining)), _output.bytes_written());
         }
     } else if(_output.bytes_written() >= index + data.size()) {
         (void)0;
     } else {
-        std::string dup = data;
-        _unassembled_bytes.push_range(std::move(dup), index);
+        _unassembled_bytes.push_range(std::string(dup), index);
     }
     remaining = _output.remaining_capacity();
     while (remaining) {
@@ -71,6 +101,7 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
         }
     }
 
+    // end input of underlying bytestream
     if (empty() && _eof) {
         _output.end_input();
     }
@@ -88,15 +119,23 @@ void UncontinuousByteRanges::push_range(std::string&& data, uint64_t index) {
         data = data.substr(0, remaining);
     }
     _size += data.size();
-    for (auto it = _ranges.rbegin(); it != _ranges.rend(); it++) {
-        if (it->first <= index) {
-            _ranges.insert(std::prev(it).base(), std::make_pair(index, Buffer(std::move(data))));
+    for (auto it = _ranges.begin(); it != _ranges.end(); it++) {
+        if (it->first > index) {
+            // deal with overlap, then calculate _size 
+
+            _ranges.insert(it, std::make_pair(index, Buffer(std::move(data))));
             return;
         }
     }
-    _ranges.push_front(std::make_pair(index, Buffer(std::move(data))));
+    _ranges.push_back(std::make_pair(index, Buffer(std::move(data))));
+    // deal with overlap, then calculate _size
+
+
+    // todo if overlap is handled here, read method can be refined to return disjoint BufferList
+
 }
 
+// todo(size should be the actual size after compact)
 size_t UncontinuousByteRanges::size() const { return _size; }
 
 std::optional<Buffer> UncontinuousByteRanges::read(uint64_t start_index, const size_t n) {
@@ -132,3 +171,9 @@ std::optional<Buffer> UncontinuousByteRanges::read(uint64_t start_index, const s
 }
 
 bool UncontinuousByteRanges::empty() const { return _ranges.empty(); }
+
+uint64_t UncontinuousByteRanges::end() const { 
+    if(_ranges.empty()) 
+        throw std::logic_error("empty ranges");
+    return _ranges.back().first + _ranges.back().second.size(); 
+}

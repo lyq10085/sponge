@@ -30,6 +30,8 @@ class UncontinuousByteRanges {
     std::optional<Buffer> read(uint64_t start_index, const size_t n);
     bool empty() const;
 
+    uint64_t end() const ; 
+
     ~UncontinuousByteRanges(){};
 };
 

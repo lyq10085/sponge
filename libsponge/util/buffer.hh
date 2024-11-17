@@ -21,11 +21,13 @@ class Buffer {
 
     size_t _prefix_length{};
 
+    size_t _ending_offset{};
+
   public:
     Buffer() = default;
 
     //! \brief Construct by taking ownership of a string
-    Buffer(std::string &&str) noexcept : _storage(std::make_shared<std::string>(std::move(str))) {}
+    Buffer(std::string &&str) noexcept : _storage(std::make_shared<std::string>(std::move(str))),_ending_offset(_storage->size()) {}
 
     //! \name Expose contents as a std::string_view
     //!@{
@@ -61,6 +63,16 @@ class Buffer {
 
     void set_prefix(const size_t n) {
       _prefix_length = n;
+    }
+
+    void remove_suffix(const size_t n) {
+      if (n > str().size()) {
+        throw std::out_of_range("Buffer::remove_suffix");
+      }
+      _ending_offset -= n;
+      if (_storage and _starting_offset == _ending_offset ) {
+          _storage.reset();
+      }
     }
 
 };
