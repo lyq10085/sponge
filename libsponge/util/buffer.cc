@@ -7,10 +7,11 @@ void Buffer::remove_prefix(const size_t n) {
         throw out_of_range("Buffer::remove_prefix");
     }
     _starting_offset += n;
-    if (_storage and _starting_offset == _storage->size()) {
+    if (_storage && _starting_offset == _storage->size()) {
         _storage.reset();
     }
 }
+
 
 void BufferList::append(const BufferList &other) {
     for (const auto &buf : other._buffers) {
@@ -36,6 +37,24 @@ string BufferList::concatenate() const {
     ret.reserve(size());
     for (const auto &buf : _buffers) {
         ret.append(buf);
+    }
+    return ret;
+}
+
+string BufferList::concatenate(size_t len) const {
+    std::string ret;
+    ret.reserve(len);
+    size_t remain = len;
+    for (const auto &buf : _buffers) {
+        if (remain == 0)
+            break;
+        else if (remain >= buf.size()) {
+            ret.append(buf);
+            remain -= buf.size();
+        } else {
+            ret.append({std::string(buf).data(), remain});
+            remain = 0;
+        }
     }
     return ret;
 }
