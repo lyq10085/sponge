@@ -112,25 +112,21 @@ size_t StreamReassembler::unassembled_bytes() const { return _unassembled_bytes.
 bool StreamReassembler::empty() const { return unassembled_bytes() == 0; }
 
 void UncontinuousByteRanges::push_range(std::string&& data, uint64_t index) {
+    Buffer buf(std::move(data));
     size_t remaining = _cap - size();
     if (remaining <= 0)
         return;
-    if (remaining < data.size()) {
-        data = data.substr(0, remaining);
+    if (remaining < buf.size()) {
+        buf.set_prefix(remaining);
     }
-
-    Buffer buf(std::move(data));
-
-    // _size += data.size();
     for (auto it = _ranges.begin(); it != _ranges.end(); it++) {
         if (it->first > index) {
-            // deal with overlap, then calculate _size 
             // std::prev(it) --<data>-- it
             // 1. remove prefix of it 
             do {
-                uint64_t l = it->first;
+                uint64_t l = it->first + it->second.start_offset();
                 uint64_t r = l + it->second.size();
-                uint64_t x = index + data.size();
+                uint64_t x = index + buf.size();
                 if(x >= r) {
                     it = _ranges.erase(it);
                 }else if(x <= l){
@@ -146,8 +142,8 @@ void UncontinuousByteRanges::push_range(std::string&& data, uint64_t index) {
             if(it != _ranges.begin()) {
                 auto pre = std::prev(it);
                 uint64_t l = index;
-                uint64_t r = l + data.size();
-                uint64_t x = pre->first + pre->second.size();
+                uint64_t r = l + buf.size();
+                uint64_t x = pre->first + pre->second.start_offset() + pre->second.size();
                 if(x >= r) {
                     return;
                 }else if(x <= l){
@@ -163,10 +159,10 @@ void UncontinuousByteRanges::push_range(std::string&& data, uint64_t index) {
     }
 
     // deal with overlap, then calculate _size
-    if(_ranges.size() > 1) {
-        uint64_t l = _ranges.back().first;
+    if(_ranges.size() >= 1) {
+        uint64_t l = _ranges.back().first + _ranges.back().second.start_offset();
         uint64_t r = l + _ranges.back().second.size();
-        uint64_t x = index + data.size();
+        uint64_t x = index + buf.size();
         // must be index >= l, x >= l
         if(x <= r) {
             return; 
@@ -177,8 +173,6 @@ void UncontinuousByteRanges::push_range(std::string&& data, uint64_t index) {
         }
     }
     _ranges.push_back(std::make_pair(index, std::move(buf)));
-    // todo if overlap is handled here, read method can be refined to return disjoint Buffers as one BufferList
-
 }
 
 // todo(size should be the actual size after compact)
@@ -197,22 +191,25 @@ std::optional<Buffer> UncontinuousByteRanges::read(uint64_t start_index, const s
     }
     auto it = _ranges.begin();
     while (it != _ranges.end()) {
-        uint64_t l = it->first;
+
+        if(it->second.size() == 0) {
+            it = _ranges.erase(it);
+            continue;
+        }
+
+        uint64_t l = it->first + it->second.start_offset(); // 最新的offset
         uint64_t r = l + it->second.size();
         if (l > start_index)
             break;
-        if (r < start_index) {
-            // _size -= it->second.size();
+        if (r <= start_index) {
             it = _ranges.erase(it);
         } else {
+            // 这里不对啊
             it->second.remove_prefix(start_index - l);
-            // _size -= start_index - l;
             Buffer buf = it->second;
             if(buf.size() <= n) {
-                // _size -= buf.size();
                 it = _ranges.erase(it);
             } else {
-                // _size -= n;
                 buf.set_prefix(n);
                 it->second.remove_prefix(n);
             }
@@ -222,10 +219,10 @@ std::optional<Buffer> UncontinuousByteRanges::read(uint64_t start_index, const s
     return std::nullopt;
 }
 
-bool UncontinuousByteRanges::empty() const { return _ranges.empty(); }
+bool UncontinuousByteRanges::empty() const { return size() == 0; }
 
 uint64_t UncontinuousByteRanges::end() const { 
-    if(_ranges.empty()) 
+    if(empty()) 
         throw std::logic_error("empty ranges");
     return _ranges.back().first + _ranges.back().second.size(); 
 }

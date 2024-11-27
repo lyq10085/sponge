@@ -2,6 +2,7 @@
 #define SPONGE_LIBSPONGE_BUFFER_HH
 
 #include <algorithm>
+#include <bits/stdint-uintn.h>
 #include <cstddef>
 #include <deque>
 #include <memory>
@@ -34,6 +35,11 @@ class Buffer {
         }
         return {_storage->data() + _starting_offset, _ending_offset - _starting_offset};
     }
+
+    uint64_t start_offset() const {
+      return _starting_offset;
+    }
+
 
     operator std::string_view() const { return str(); }
     //!@}
