@@ -18,19 +18,19 @@
 class UncontinuousByteRanges {
   private:
     std::list<std::pair<uint64_t, Buffer>> _ranges;
-    [[maybe_unused]] size_t _size{0};
+    // [[maybe_unused]] size_t _size{0};
     size_t _cap{0};
 
   public:
     UncontinuousByteRanges(size_t capacity) : _cap(capacity){};
 
-    void push_range(std::string&& data, uint64_t index);
+    void push_range(std::string &&data, uint64_t index);
 
     size_t size() const;
     std::optional<Buffer> read(uint64_t start_index, const size_t n);
     bool empty() const;
 
-    uint64_t end() const ; 
+    uint64_t end() const;
 
     ~UncontinuousByteRanges(){};
 };
@@ -77,6 +77,5 @@ class StreamReassembler {
     //! \returns `true` if no substrings are waiting to be assembled
     bool empty() const;
 };
-
 
 #endif  // SPONGE_LIBSPONGE_STREAM_REASSEMBLER_HH

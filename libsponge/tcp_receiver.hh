@@ -6,6 +6,7 @@
 #include "tcp_segment.hh"
 #include "wrapping_integers.hh"
 
+#include <cstdint>
 #include <optional>
 
 //! \brief The "receiver" part of a TCP implementation.
@@ -20,12 +21,11 @@ class TCPReceiver {
     //! The maximum number of bytes we'll store.
     [[maybe_unused]] size_t _capacity;
 
-    std::optional<WrappingInt32> _ackno;
+    WrappingInt32 _isn_recv{0};
 
-    std::optional<WrappingInt32> _isn_recv;
+    std::optional<uint64_t> _ackno;
 
-    std::optional<WrappingInt32> _isn_send;
-
+    uint64_t _checkpoint{0};
 
   public:
     //! \brief Construct a TCP receiver
@@ -68,6 +68,8 @@ class TCPReceiver {
     ByteStream &stream_out() { return _reassembler.stream_out(); }
     const ByteStream &stream_out() const { return _reassembler.stream_out(); }
     //!@}
+
+    size_t shift_size() const;
 };
 
 #endif  // SPONGE_LIBSPONGE_TCP_RECEIVER_HH

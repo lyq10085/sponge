@@ -13,6 +13,7 @@ int main() {
     try {
         // Unwrap the first byte after ISN
         test_should_be(unwrap(WrappingInt32(1), WrappingInt32(0), 0), 1ul);
+        test_should_be(unwrap(WrappingInt32(3), WrappingInt32(1), 1), 2ul);
         // Unwrap the first byte after the first wrap
         test_should_be(unwrap(WrappingInt32(1), WrappingInt32(0), UINT32_MAX), (1ul << 32) + 1);
         // Unwrap the last byte before the third wrap
