@@ -20,6 +20,13 @@ class TCPReceiver {
     //! The maximum number of bytes we'll store.
     [[maybe_unused]] size_t _capacity;
 
+    std::optional<WrappingInt32> _ackno;
+
+    std::optional<WrappingInt32> _isn_recv;
+
+    std::optional<WrappingInt32> _isn_send;
+
+
   public:
     //! \brief Construct a TCP receiver
     //!

@@ -1,4 +1,6 @@
 #include "tcp_receiver.hh"
+#include "wrapping_integers.hh"
+#include <cstdint>
 
 // Dummy implementation of a TCP receiver
 
@@ -14,6 +16,11 @@ void TCPReceiver::segment_received(const TCPSegment &seg) {
     DUMMY_CODE(seg);
 }
 
-optional<WrappingInt32> TCPReceiver::ackno() const { return {}; }
+optional<WrappingInt32> TCPReceiver::ackno() const { return _ackno; }
 
-size_t TCPReceiver::window_size() const { return {}; }
+size_t TCPReceiver::window_size() const { 
+    // todo 
+    uint64_t x = unwrap(_ackno.value(), _isn.value(), 0ull);
+    uint64_t y = unwrap(wrap(_reassembler.stream_out().bytes_read(), _isn.value()), _isn.value(), 0ull);
+    return y - x;
+}
