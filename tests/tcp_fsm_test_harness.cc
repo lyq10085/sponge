@@ -23,7 +23,7 @@ TestFD::TestFD()
     }()) {}
 
 TestFD::TestFD(pair<FileDescriptor, TestRFD> fd_pair)
-    : FileDescriptor(move(fd_pair.first)), _recv_fd(move(fd_pair.second)) {}
+    : FileDescriptor(std::move(fd_pair.first)), _recv_fd(std::move(fd_pair.second)) {}
 
 //! \param[in] buffer is the content to write to the TestFD
 void TestFD::write(const BufferViewList &buffer) {

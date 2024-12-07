@@ -55,14 +55,14 @@ int main() {
                     size_t expected_size = min(bytes_remaining, TCPConfig::MAX_PAYLOAD_SIZE);
                     auto seg = test_1.expect_seg(ExpectSegment{}.with_payload_size(expected_size));
                     bytes_remaining -= expected_size;
-                    test_1.execute(SendSegment{move(seg)});
+                    test_1.execute(SendSegment{std::move(seg)});
                     test_1.execute(Tick(1));
                 }
 
                 // Transfer the (bare) ack segments
                 for (size_t i = 0; i < n_segments; ++i) {
                     auto seg = test_1.expect_seg(ExpectSegment{}.with_ack(true).with_payload_size(0));
-                    test_1.execute(SendSegment{move(seg)});
+                    test_1.execute(SendSegment{std::move(seg)});
                     test_1.execute(Tick(1));
                 }
                 test_1.execute(ExpectNoSegment{});

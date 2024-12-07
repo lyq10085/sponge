@@ -12,7 +12,7 @@
 
 using namespace std;
 
-constexpr uint16_t DPORT_DFLT = 1440;
+[[maybe_unused]] constexpr uint16_t DPORT_DFLT = 1440;
 
 static void show_usage(const char *argv0, const char *msg) {
     cout << "Usage: " << argv0 << " [options] <host> <port>\n\n"
@@ -118,7 +118,7 @@ int main(int argc, char **argv) {
         if (listen) {
             udp_sock.bind(c_filt.source);
         }
-        LossyTCPOverUDPSpongeSocket tcp_socket(LossyTCPOverUDPSocketAdapter(TCPOverUDPSocketAdapter(move(udp_sock))));
+        LossyTCPOverUDPSpongeSocket tcp_socket(LossyTCPOverUDPSocketAdapter(TCPOverUDPSocketAdapter(std::move(udp_sock))));
         if (listen) {
             tcp_socket.listen_and_accept(c_fsm, c_filt);
         } else {

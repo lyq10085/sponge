@@ -28,7 +28,7 @@ optional<TCPSegment> TCPOverUDPSocketAdapter::read() {
 
     // is the payload a valid TCP segment?
     TCPSegment seg;
-    if (ParseResult::NoError != seg.parse(move(datagram.payload), 0)) {
+    if (ParseResult::NoError != seg.parse(std::move(datagram.payload), 0)) {
         return {};
     }
 

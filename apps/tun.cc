@@ -23,7 +23,7 @@ int main() {
             IPv4Datagram ip_dgram;
 
             cout << "attempting to parse as ipv4 datagram... ";
-            if (ip_dgram.parse(move(buffer)) != ParseResult::NoError) {
+            if (ip_dgram.parse(std::move(buffer)) != ParseResult::NoError) {
                 cout << "failed.\n";
                 continue;
             }

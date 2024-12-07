@@ -13,16 +13,16 @@ constexpr size_t len = 100 * 1024 * 1024;
 
 void move_segments(TCPConnection &x, TCPConnection &y, vector<TCPSegment> &segments, const bool reorder) {
     while (not x.segments_out().empty()) {
-        segments.emplace_back(move(x.segments_out().front()));
+        segments.emplace_back(std::move(x.segments_out().front()));
         x.segments_out().pop();
     }
     if (reorder) {
         for (auto it = segments.rbegin(); it != segments.rend(); ++it) {
-            y.segment_received(move(*it));
+            y.segment_received(std::move(*it));
         }
     } else {
         for (auto it = segments.begin(); it != segments.end(); ++it) {
-            y.segment_received(move(*it));
+            y.segment_received(std::move(*it));
         }
     }
     segments.clear();
