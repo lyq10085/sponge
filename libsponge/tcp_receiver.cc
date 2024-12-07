@@ -62,7 +62,6 @@ size_t TCPReceiver::window_size() const {
     return _capacity;
 }
 
-
 size_t TCPReceiver::shift_size() const {
     if (_ackno.value() == 1 || (_ackno.value() == 2 && _reassembler.unassembled_bytes() == 0))
         return _ackno.value();
