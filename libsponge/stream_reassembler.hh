@@ -1,19 +1,49 @@
 #ifndef SPONGE_LIBSPONGE_STREAM_REASSEMBLER_HH
 #define SPONGE_LIBSPONGE_STREAM_REASSEMBLER_HH
 
+#include "buffer.hh"
 #include "byte_stream.hh"
 
+#include <bits/stdint-uintn.h>
+#include <cstddef>
 #include <cstdint>
+#include <cstdlib>
+#include <list>
+#include <optional>
 #include <string>
+#include <string_view>
+#include <utility>
+
+// a sorted list of disjoint range
+class UncontinuousByteRanges {
+  private:
+    std::list<std::pair<uint64_t, Buffer>> _ranges;
+    // [[maybe_unused]] size_t _size{0};
+    size_t _cap{0};
+
+  public:
+    UncontinuousByteRanges(size_t capacity) : _cap(capacity){};
+
+    void push_range(std::string &&data, uint64_t index);
+
+    size_t size() const;
+    std::optional<Buffer> read(uint64_t start_index, const size_t n);
+    bool empty() const;
+
+    uint64_t end() const;
+
+    ~UncontinuousByteRanges(){};
+};
 
 //! \brief A class that assembles a series of excerpts from a byte stream (possibly out of order,
 //! possibly overlapping) into an in-order byte stream.
 class StreamReassembler {
   private:
     // Your code here -- add private members as necessary.
-
-    ByteStream _output;  //!< The reassembled in-order byte stream
-    size_t _capacity;    //!< The maximum number of bytes
+    UncontinuousByteRanges _unassembled_bytes;
+    ByteStream _output;                 //!< The reassembled in-order byte stream
+    [[maybe_unused]] size_t _capacity;  //!< The maximum number of bytes
+    bool _eof{false};
 
   public:
     //! \brief Construct a `StreamReassembler` that will store up to `capacity` bytes.

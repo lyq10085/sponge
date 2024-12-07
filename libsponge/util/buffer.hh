@@ -2,6 +2,8 @@
 #define SPONGE_LIBSPONGE_BUFFER_HH
 
 #include <algorithm>
+#include <bits/stdint-uintn.h>
+#include <cstddef>
 #include <deque>
 #include <memory>
 #include <numeric>
@@ -9,6 +11,7 @@
 #include <string>
 #include <string_view>
 #include <sys/uio.h>
+#include <type_traits>
 #include <vector>
 
 //! \brief A reference-counted read-only string that can discard bytes from the front
@@ -16,12 +19,14 @@ class Buffer {
   private:
     std::shared_ptr<std::string> _storage{};
     size_t _starting_offset{};
+    size_t _ending_offset;
 
   public:
     Buffer() = default;
 
     //! \brief Construct by taking ownership of a string
-    Buffer(std::string &&str) noexcept : _storage(std::make_shared<std::string>(std::move(str))) {}
+    Buffer(std::string &&str) noexcept
+        : _storage(std::make_shared<std::string>(std::move(str))), _ending_offset(_storage->size()) {}
 
     //! \name Expose contents as a std::string_view
     //!@{
@@ -29,8 +34,10 @@ class Buffer {
         if (not _storage) {
             return {};
         }
-        return {_storage->data() + _starting_offset, _storage->size() - _starting_offset};
+        return {_storage->data() + _starting_offset, _ending_offset - _starting_offset};
     }
+
+    uint64_t start_offset() const { return _starting_offset; }
 
     operator std::string_view() const { return str(); }
     //!@}
@@ -47,6 +54,23 @@ class Buffer {
     //! \brief Discard the first `n` bytes of the string (does not require a copy or move)
     //! \note Doesn't free any memory until the whole string has been discarded in all copies of the Buffer.
     void remove_prefix(const size_t n);
+
+    void set_prefix(const size_t n) {
+        if (n > str().size()) {
+            throw std::out_of_range("Buffer::remove_suffix");
+        }
+        _ending_offset = _starting_offset + n;
+    }
+
+    void remove_suffix(const size_t n) {
+        if (n > str().size()) {
+            throw std::out_of_range("Buffer::remove_suffix");
+        }
+        _ending_offset -= n;
+        if (_storage && _starting_offset == _ending_offset) {
+            _storage.reset();
+        }
+    }
 };
 
 //! \brief A reference-counted discontiguous string that can discard bytes from the front
@@ -92,6 +116,9 @@ class BufferList {
 
     //! \brief Make a copy to a new std::string
     std::string concatenate() const;
+
+    //! \brief make a copy of prefix len bytes, caller make sure len < reminging bytes
+    std::string concatenate(size_t len) const;
 };
 
 //! \brief A non-owning temporary view (similar to std::string_view) of a discontiguous string
